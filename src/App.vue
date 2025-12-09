@@ -1,0 +1,306 @@
+<template>
+  <div id="app">
+
+    <!--Top of page header-->
+    <header class="top_of_page_header">
+      <div class="logo">CloudBeat</div>
+      <div class="user_signin">
+        
+      
+      <span v-if="userListStore.user" class="user-label">
+        Signed in as {{ userListStore.user.displayName }}</span>
+        <span v-else class="hint">Please sign in to see your playlist. </span>
+        <button @click="withGoogle">{{ sign_in_out }}</button>
+      </div>
+    </header>
+
+    <!-- Main content area -->
+    <main class="main">
+      <!-- LEFT side of page -->
+      <section class="left_side">
+
+
+      <!-- top left song embed window -->
+       <!-- <div class="song_window"> -->
+        <div class="song_window">
+       <iframe
+          :src="url_for_current_video"
+          frameborder="0"
+          allow=
+          "accelerometer; 
+          autoplay; 
+          clipboard-write; 
+          encrypted-media; 
+          gyroscope; 
+          picture-in-picture"
+          allowfullscreen
+        ></iframe>
+        </div>
+
+      <!-- bottom leftuser playlist -->
+        <div class="user_playlist_window">
+        <div class="user_playlist_header">{{ userListStore.user ? userListStore.user.displayName : "Your" }} Playlist</div>
+          <div class="user_playlist_video_list">
+            <div class="video_item">  </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT side of page -->
+      <!-- global songs list  -->
+      <section class="global_playlist">  
+       <div class="global_header">Global Music</div>
+       <div class="video_list">
+          <div class="video_item"
+            v-for="video in userListStore.music"
+            :key="video.id"
+            @click="playVideo(video)"
+            style="cursor: pointer;">
+            <p>{{ video.name }} - {{ video.author }}</p>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- footer -->
+    <footer class="footer">
+      © 2025 Soundbeat | Can you hear the music?
+    </footer>
+  </div>
+</template>
+
+
+
+
+
+<script setup lang="ts">
+/* TS _______________________________________________________________________________ */ 
+import { ref, } from "vue";
+
+
+const url_for_current_video = ref<string>("https://www.youtube.com/embed/vYYW9hPj2TM");
+
+
+import { onMounted, 
+//onBeforeUnmount 
+
+} from "vue";
+import { userList } from "./stores/musicStore";
+
+const userListStore = userList();
+const sign_in_out = ref("Sign In with Google");
+
+const message = ref("");
+
+const showMessage = (txt: string) => {
+  message.value = txt;
+  setTimeout(() => {
+    message.value = "";
+  }, 5000);
+};
+
+
+onMounted(() => {
+  userListStore.init();
+});
+
+
+import { 
+  getAuth,
+  signInWithPopup,
+  //createUserWithEmailAndPassword,
+  //signInWithEmailAndPassword,
+  GoogleAuthProvider, 
+  signOut
+ } from "firebase/auth";
+
+const playVideo = (video: any) => {
+  url_for_current_video.value = video.url;
+  userListStore.currentmusic = video;
+};
+
+const withGoogle = async () => {
+  const auth = getAuth();
+  
+  //Sign in the user with Google,
+ if (sign_in_out.value === "Sign Out") {
+    await signOut(auth);
+    userListStore.setUser(null);
+    sign_in_out.value = "Sign In with Google";
+    showMessage("Signed out successfully");
+    return;
+  }
+   try {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+
+    userListStore.setUser(result.user);
+    sign_in_out.value = "Sign Out";
+    showMessage(`Signed in as ${result.user.displayName}`);
+
+  } catch (error) {
+    console.error(error);
+    showMessage("Sign in failed");
+  }
+};
+
+
+
+
+
+</script>
+
+
+<style lang="scss">
+/// CSS _______________________________________________________________________________ */ 
+*{
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+body, html {
+  margin: 0px;
+  padding: 0px;
+  background: linear-gradient(to bottom, #003616 0%, #4e6b59 100%);
+}
+
+/// Overall page structure */
+#app{
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+/// Head */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #368652;
+  padding: 1rem;
+}
+
+header .logo {
+  font-size: 1.4rem;
+  color: #ffffff;
+}
+
+header .signin {
+  font-size: 1rem;
+  color: #ffffff;
+}
+
+/// Body 
+main {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  width: 100%;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+// Left  
+.left_side {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 1rem;
+}
+
+
+/// Song embed window ////
+.song_window {
+  background-color: rgba(255,255,255,0.15);
+  border: 1px solid #ffffff;
+  border-radius: 5px;
+  display: flex; 
+  justify-content: center;
+  align-items: center;
+  width: 32rem;
+  height: 16rem;
+  overflow: hidden; 
+}
+
+.song_window iframe {
+  width: 24rem;
+  height: 16rem;
+  border: none;
+  flex: 1 1 100%; 
+}
+
+/// User playlist *///////////////////////////////////////////////////////
+.user_playlist_window {
+  background-color: rgba(255,255,255,0.10);
+  border: 1px solid #ffffff;
+  border-radius: 5px;
+  overflow-y: auto;
+}
+.user_playlist_header{
+  width: 100%;
+  background-color: #368652;
+  color: white;
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+.user_playlist_video_list{
+  color: white;
+  padding: 10px;
+}
+
+.video_item{
+  border-top: 1px solid #ececec;
+  padding: 8px 0;
+  border-bottom: 1px solid #ececec;
+}
+
+.video_item:hover {
+  background-color:  #368652;
+  transform: scale(0.9);
+  cursor: pointer;
+}
+
+//////////////////////////////////////////////////////////////////////
+
+/* Global playlist */
+.global_playlist {
+  background-color: rgba(255,255,255,0.25);
+  border: 1px solid #ffffff;
+  border-radius: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100vh;
+  padding: 10px;
+}
+
+.global_header{
+  width: 100%;
+  background-color: #368652;
+  color: white;
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.video_list{
+  color: white;
+  padding: 10px;
+}
+
+.video_item{
+  border-top: 1px solid #ececec;
+  padding: 8px 0;
+  border-bottom: 1px solid #ececec;
+}
+
+
+// Footer ////////////////////////////////////////////////////////////// 
+footer {
+  background-color: #368652;
+  text-align: center;
+  padding: 0.75rem;
+  color: #ffffff;
+}
+</style>

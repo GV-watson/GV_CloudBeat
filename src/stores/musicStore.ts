@@ -1,7 +1,5 @@
 import { defineStore } from "pinia";
-
 import db from "../firebase.ts";
-
 import {
   collection,
   getDocs,
@@ -49,7 +47,7 @@ export const userList = defineStore("userList", {
 
     user: null as User | null,
     snapshotUnsubscribe: null as Unsubscribe | null,
-
+    query: "" as string,
     playlists: [] as Playlist[],
     currentPlaylistId: null as string | null,
     playlistSongs: [] as PlaylistSong[],
@@ -246,7 +244,18 @@ export const userList = defineStore("userList", {
       if (index !== -1) {
         this.currentPlaylistIndex = index;
       }
-    }
+    },
+
+  searchMusic(query: string) {
+  const lowerQuery = query.toLowerCase();
+  const results = this.music.filter(video =>
+    video.name.toLowerCase().includes(lowerQuery) ||
+    video.author.toLowerCase().includes(lowerQuery)
+  );
+  if (results.length > 0) {
+  this.currentmusic = results[0];}
+  return results;
+  }
 
   }
 });

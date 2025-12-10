@@ -7,10 +7,12 @@
       <div class="user_signin">
         
       
-      <span v-if="userListStore.user" class="user-label">
+      <span v-if="userListStore.user" class="user-label" style="color: white; padding: 2px; cursor: pointer;">
         Signed in as {{ userListStore.user.displayName }}</span>
-        <span v-else class="hint">Please sign in to see your playlist. </span>
-        <button @click="withGoogle">{{ sign_in_out }}</button>
+      <span v-else class="hint" style="color: white;">Sign in</span>
+      <button @click="withGoogle" style="background-color: darkgreen; color: white; padding: 2px; cursor: pointer;">
+      {{ sign_in_out }}
+      </button>
       </div>
     </header>
 
@@ -25,14 +27,7 @@
         <div class="song_window">
        <div id="youtube-player"></div>
         
-        <div class="player_controls">
-          <button @click="playPrevious" :disabled="!userListStore.currentPlaylistId">⏮️</button>
-          <button @click="togglePlayPause">{{ isPlaying ? '⏸️' : '▶️' }}</button>
-          <button @click="toggleShuffle" :disabled="!userListStore.currentPlaylistId">
-            {{ userListStore.isShuffled ? '🔀' : '📋' }}
-          </button>
-          <button @click="playNext" :disabled="!userListStore.currentPlaylistId">⏭️</button>
-        </div>
+        
         </div>
 
       <!-- bottom leftuser playlist -->
@@ -40,6 +35,22 @@
 
           <div class="user_playlist_header">
             {{ userListStore.user ? userListStore.user.displayName : "Your" }} Playlists
+            <div class="player_controls">
+            <button @click="playPrevious" 
+             style="background-color: darkgreen; color: white; padding: 2px; cursor: pointer;"
+            :disabled="!userListStore.currentPlaylistId">Back</button>
+            <button @click="togglePlayPause"
+             style="background-color: darkgreen; color: white; padding: 2px; cursor: pointer;"
+            >{{ isPlaying ? 'Pause' : 'Play' }}</button>
+            <button @click="toggleShuffle"  
+            style="background-color: darkgreen; color: white; padding: 2px; cursor: pointer;"
+            :disabled="!userListStore.currentPlaylistId">
+            {{ userListStore.isShuffled ? 'Shuffle On' : 'Shuffle Off' }}
+          </button>
+          <button @click="playNext" 
+           style="background-color: darkgreen; color: white; padding: 2px; cursor: pointer;"
+          :disabled="!userListStore.currentPlaylistId">Next</button>
+        </div>
           </div>
 
           <div class="user_playlist_video_list">
@@ -70,7 +81,11 @@
               <!-- Create Playlist Button -->
               <button
                 @click="createNewPlaylist"
-                style="width: 100%; margin-bottom: 10px;"
+                style="width: 100%; 
+                margin-bottom: 10px; 
+                background-color: darkgreen; color: white;
+                padding: 2px;
+                cursor: pointer;"
               >
                 + Create Playlist
               </button>
@@ -82,7 +97,7 @@
                   v-for="song in playlistSongsWithDetails"
                   :key="song.id"
                   @click="playVideo(song)"
-                  style="cursor: pointer;"
+                  style="padding: 2px; cursor: pointer;"
                 >
                   {{ song.name }} — {{ song.author }}
                 </div>
@@ -90,7 +105,7 @@
 
               <!-- Empty state -->
               <div v-else style="color: white; margin-top: 10px;">
-                This playlist is empty.
+              This playlist is empty.
               </div>
 
             </div>
@@ -102,7 +117,19 @@
       <!-- RIGHT side of page -->
       <!-- global songs list  -->
       <section class="global_playlist">  
-       <div class="global_header">Global Music</div>
+       <div class="global_header">Global Music
+        
+        <!-- user query for song  -->
+         <input v-model="userListStore.query"
+          type="text"
+          placeholder="Search for a song"/>
+          <button @click="searchforSong()"
+           style="background-color: darkgreen; 
+           color: white; padding: 
+           2px; cursor: pointer;"
+          > Find Song </button>
+
+       </div>
        <div class="video_list">
         <div class="video-item"
           v-for="video in userListStore.music"
@@ -117,7 +144,8 @@
           <button
             v-if="userListStore.user && userListStore.currentPlaylistId"
             @click="addToCurrentPlaylist(video)"
-            style="margin-top: 5px;"
+            style="margin-top: 5px; background-color: darkgreen; color: white; padding: 2px;
+            cursor: pointer;"
           >
         + Add to Playlist
       </button>
@@ -131,13 +159,10 @@
 
     <!-- footer -->
     <footer class="footer">
-      © 2025 Soundbeat | Can you hear the music?
+      © 2025 CloudBeat | Can you hear the music?
     </footer>
   </div>
 </template>
-
-
-
 
 
 <script setup lang="ts">
@@ -273,7 +298,7 @@ const initializePlayer = () => {
   });
 };
 
-const onPlayerReady = (event: any) => {
+const onPlayerReady = (_event: any) => {
   console.log('Player ready');
 };
 
@@ -329,7 +354,7 @@ const playlistSongsWithDetails = computed(() => {
     .map((plSong) =>
       userListStore.music.find((song) => song.id === plSong.songId)
     )
-    .filter(Boolean);
+    .filter((song): song is NonNullable<typeof song> => song !== undefined);
 });
 
 const onPlaylistChange = async () => {
@@ -359,6 +384,14 @@ const addToCurrentPlaylist = async (video: any) => {
   await onPlaylistChange();
   console.log("Adding:", video, "Playlist:", userListStore.currentPlaylistId);
 
+};
+
+const searchforSong = async () => {
+  if (!userListStore.query) return;
+  const results = userListStore.searchMusic(userListStore.query);
+  if (results.length > 0) {
+    playVideo(results[0]);
+  }
 };
 
 

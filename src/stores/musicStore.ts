@@ -54,6 +54,8 @@ export const userList = defineStore("userList", {
     currentPlaylistId: null as string | null,
     playlistSongs: [] as PlaylistSong[],
 
+    persist: true
+
   }),
 
 

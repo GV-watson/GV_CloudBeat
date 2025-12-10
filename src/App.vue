@@ -39,11 +39,66 @@
 
       <!-- bottom leftuser playlist -->
         <div class="user_playlist_window">
-        <div class="user_playlist_header">{{ userListStore.user ? userListStore.user.displayName : "Your" }} Playlist</div>
+
+          <div class="user_playlist_header">
+            {{ userListStore.user ? userListStore.user.displayName : "Your" }} Playlists
+          </div>
+
           <div class="user_playlist_video_list">
-            <div class="video_item">  </div>
+
+            <!-- Not signed in -->
+            <div v-if="!userListStore.user" style="padding: 10px; color: white;">
+              Please sign in to see your playlists.
+            </div>
+
+            <!-- Signed in -->
+            <div v-else>
+
+              <!-- Playlist Selector -->
+              <select
+                v-model="userListStore.currentPlaylistId"
+                @change="onPlaylistChange"
+                style="width: 100%; padding: 5px; margin-bottom: 10px;"
+              >
+                <option
+                  v-for="pl in userListStore.playlists"
+                  :key="pl.id"
+                  :value="pl.id"
+                >
+                  {{ pl.name }}
+                </option>
+              </select>
+
+              <!-- Create Playlist Button -->
+              <button
+                @click="createNewPlaylist"
+                style="width: 100%; margin-bottom: 10px;"
+              >
+                + Create Playlist
+              </button>
+
+              <!-- Playlist Songs -->
+              <div v-if="playlistSongsWithDetails.length > 0">
+                <div
+                  class="video_item"
+                  v-for="song in playlistSongsWithDetails"
+                  :key="song.id"
+                  @click="playVideo(song)"
+                  style="cursor: pointer;"
+                >
+                  {{ song.name }} — {{ song.author }}
+                </div>
+              </div>
+
+              <!-- Empty state -->
+              <div v-else style="color: white; margin-top: 10px;">
+                This playlist is empty.
+              </div>
+
+            </div>
           </div>
         </div>
+
       </section>
 
       <!-- RIGHT side of page -->
@@ -51,13 +106,26 @@
       <section class="global_playlist">  
        <div class="global_header">Global Music</div>
        <div class="video_list">
-          <div class="video_item"
-            v-for="video in userListStore.music"
-            :key="video.id"
-            @click="playVideo(video)"
-            style="cursor: pointer;">
-            <p>{{ video.name }} - {{ video.author }}</p>
-          </div>
+        <div class="video-item"
+          v-for="video in userListStore.music"
+          :key="video.id">
+
+          <!-- Clicking title plays video -->
+          <p @click="playVideo(video)" style="cursor: pointer;">
+            {{ video.name }} - {{ video.author }}
+          </p>
+
+          <!-- Add to playlist button -->
+          <button
+            v-if="userListStore.user && userListStore.currentPlaylistId"
+            @click="addToCurrentPlaylist(video)"
+            style="margin-top: 5px;"
+          >
+        + Add to Playlist
+      </button>
+    </div>
+
+
         </div>
 
       </section>
@@ -76,7 +144,7 @@
 
 <script setup lang="ts">
 /* TS _______________________________________________________________________________ */ 
-import { ref, } from "vue";
+import { ref, computed } from "vue";
 
 
 const url_for_current_video = ref<string>("https://www.youtube.com/embed/vYYW9hPj2TM");
@@ -112,8 +180,22 @@ import {
   //createUserWithEmailAndPassword,
   //signInWithEmailAndPassword,
   GoogleAuthProvider, 
-  signOut
+  signOut,
+  setPersistence,
+  browserLocalPersistence
  } from "firebase/auth";
+
+ const auth = getAuth();
+ setPersistence(auth, browserLocalPersistence);
+
+ import { onAuthStateChanged } from "firebase/auth";
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      userListStore.setUser(user);
+    }
+  });
+
 
 const playVideo = (video: any) => {
   url_for_current_video.value = video.url;
@@ -144,6 +226,44 @@ const withGoogle = async () => {
     showMessage("Sign in failed");
   }
 };
+
+const playlistSongsWithDetails = computed(() => {
+  return userListStore.playlistSongs
+    .map((plSong) =>
+      userListStore.music.find((song) => song.id === plSong.songId)
+    )
+    .filter(Boolean);
+});
+
+const onPlaylistChange = async () => {
+  if (userListStore.currentPlaylistId) {
+    await userListStore.loadSongsForPlaylist(userListStore.currentPlaylistId);
+  }
+};
+
+const createNewPlaylist = async () => {
+  const name = prompt("Enter playlist name:");
+  if (!name) return;
+
+  await userListStore.createPlaylist(name);
+  await onPlaylistChange();
+};
+
+const addToCurrentPlaylist = async (video: any) => {
+  if (!userListStore.currentPlaylistId) return;
+
+  await userListStore.addSongToPlaylist(
+    userListStore.currentPlaylistId,
+    video
+    
+  );
+  
+
+  await onPlaylistChange();
+  console.log("Adding:", video, "Playlist:", userListStore.currentPlaylistId);
+
+};
+
 
 
 
@@ -250,10 +370,10 @@ main {
   padding: 10px;
 }
 
-.video_item{
+.video-item{
   border-top: 1px solid #ececec;
-  padding: 8px 0;
   border-bottom: 1px solid #ececec;
+  padding: 8px 0;
 }
 
 .video_item:hover {

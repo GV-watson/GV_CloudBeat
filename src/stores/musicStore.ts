@@ -54,6 +54,10 @@ export const userList = defineStore("userList", {
     currentPlaylistId: null as string | null,
     playlistSongs: [] as PlaylistSong[],
 
+    isShuffled: false,
+    shuffledPlaylist: [] as musicVideo[],
+    currentPlaylistIndex: 0,
+
     persist: true
 
   }),
@@ -178,6 +182,71 @@ export const userList = defineStore("userList", {
       await this.loadSongsForPlaylist(playlistId);
     },
 
+
+    shufflePlaylist() {
+      const playlist = this.playlistSongs
+        .map((plSong) => this.music.find((song) => song.id === plSong.songId))
+        .filter(Boolean) as musicVideo[];
+      
+      const shuffled = [...playlist];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      this.shuffledPlaylist = shuffled;
+      this.isShuffled = true;
+      this.currentPlaylistIndex = 0;
+    },
+
+    toggleShuffle() {
+      if (this.isShuffled) {
+        this.isShuffled = false;
+        this.shuffledPlaylist = [];
+        this.currentPlaylistIndex = 0;
+      } else {
+        this.shufflePlaylist();
+      }
+    },
+
+    getCurrentPlaylist() {
+      if (this.isShuffled) {
+        return this.shuffledPlaylist;
+      }
+      return this.playlistSongs
+        .map((plSong) => this.music.find((song) => song.id === plSong.songId))
+        .filter(Boolean) as musicVideo[];
+    },
+
+    playNext() {
+      const playlist = this.getCurrentPlaylist();
+      if (playlist.length === 0) return null;
+
+      this.currentPlaylistIndex = (this.currentPlaylistIndex + 1) % playlist.length;
+      const nextSong = playlist[this.currentPlaylistIndex];
+      this.currentmusic = nextSong;
+      return nextSong;
+    },
+
+    playPrevious() {
+      const playlist = this.getCurrentPlaylist();
+      if (playlist.length === 0) return null;
+
+      this.currentPlaylistIndex = this.currentPlaylistIndex === 0 
+        ? playlist.length - 1 
+        : this.currentPlaylistIndex - 1;
+      const prevSong = playlist[this.currentPlaylistIndex];
+      this.currentmusic = prevSong;
+      return prevSong;
+    },
+
+    setCurrentSongIndex(song: musicVideo) {
+      const playlist = this.getCurrentPlaylist();
+      const index = playlist.findIndex(s => s.id === song.id);
+      if (index !== -1) {
+        this.currentPlaylistIndex = index;
+      }
+    }
 
   }
 });

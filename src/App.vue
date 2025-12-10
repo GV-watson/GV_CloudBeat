@@ -23,18 +23,16 @@
       <!-- top left song embed window -->
        <!-- <div class="song_window"> -->
         <div class="song_window">
-       <iframe
-          :src="url_for_current_video"
-          frameborder="0"
-          allow=
-          "accelerometer; 
-          autoplay; 
-          clipboard-write; 
-          encrypted-media; 
-          gyroscope; 
-          picture-in-picture"
-          allowfullscreen
-        ></iframe>
+       <div id="youtube-player"></div>
+        
+        <div class="player_controls">
+          <button @click="playPrevious" :disabled="!userListStore.currentPlaylistId">⏮️</button>
+          <button @click="togglePlayPause">{{ isPlaying ? '⏸️' : '▶️' }}</button>
+          <button @click="toggleShuffle" :disabled="!userListStore.currentPlaylistId">
+            {{ userListStore.isShuffled ? '🔀' : '📋' }}
+          </button>
+          <button @click="playNext" :disabled="!userListStore.currentPlaylistId">⏭️</button>
+        </div>
         </div>
 
       <!-- bottom leftuser playlist -->
@@ -148,6 +146,8 @@ import { ref, computed } from "vue";
 
 
 const url_for_current_video = ref<string>("https://www.youtube.com/embed/vYYW9hPj2TM");
+const isPlaying = ref<boolean>(false);
+let youtubePlayer: any = null;
 
 
 import { onMounted, 
@@ -171,6 +171,7 @@ const showMessage = (txt: string) => {
 
 onMounted(() => {
   userListStore.init();
+  loadYouTubeAPI();
 });
 
 
@@ -200,6 +201,102 @@ import {
 const playVideo = (video: any) => {
   url_for_current_video.value = video.url;
   userListStore.currentmusic = video;
+  userListStore.setCurrentSongIndex(video);
+  
+  if (youtubePlayer) {
+    const videoId = extractVideoId(video.url);
+    if (videoId) {
+      youtubePlayer.loadVideoById(videoId);
+    }
+  }
+};
+
+const playNext = () => {
+  const nextSong = userListStore.playNext();
+  if (nextSong) {
+    url_for_current_video.value = nextSong.url;
+    if (youtubePlayer) {
+      const videoId = extractVideoId(nextSong.url);
+      if (videoId) {
+        youtubePlayer.loadVideoById(videoId);
+      }
+    }
+  }
+};
+
+const playPrevious = () => {
+  const prevSong = userListStore.playPrevious();
+  if (prevSong) {
+    url_for_current_video.value = prevSong.url;
+    if (youtubePlayer) {
+      const videoId = extractVideoId(prevSong.url);
+      if (videoId) {
+        youtubePlayer.loadVideoById(videoId);
+      }
+    }
+  }
+};
+
+const toggleShuffle = () => {
+  userListStore.toggleShuffle();
+};
+
+const extractVideoId = (url: string) => {
+  const match = url.match(/(?:embed\/|v=|\/v\/|youtu\.be\/|\/embed\/)([^&\n?#]+)/);
+  return match ? match[1] : null;
+};
+
+const loadYouTubeAPI = () => {
+  if ((window as any).YT) {
+    initializePlayer();
+    return;
+  }
+  
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+  
+  (window as any).onYouTubeIframeAPIReady = initializePlayer;
+};
+
+const initializePlayer = () => {
+  const videoId = extractVideoId(url_for_current_video.value);
+  youtubePlayer = new (window as any).YT.Player('youtube-player', {
+    height: '315',
+    width: '560',
+    videoId: videoId,
+    events: {
+      onReady: onPlayerReady,
+      onStateChange: onPlayerStateChange
+    }
+  });
+};
+
+const onPlayerReady = (event: any) => {
+  console.log('Player ready');
+};
+
+const onPlayerStateChange = (event: any) => {
+  const YT = (window as any).YT;
+  if (event.data === YT.PlayerState.PLAYING) {
+    isPlaying.value = true;
+  } else if (event.data === YT.PlayerState.PAUSED) {
+    isPlaying.value = false;
+  } else if (event.data === YT.PlayerState.ENDED) {
+    isPlaying.value = false;
+    playNext();
+  }
+};
+
+const togglePlayPause = () => {
+  if (!youtubePlayer) return;
+  
+  if (isPlaying.value) {
+    youtubePlayer.pauseVideo();
+  } else {
+    youtubePlayer.playVideo();
+  }
 };
 
 const withGoogle = async () => {
